@@ -1511,17 +1511,19 @@ async def tts_stream_generate(client: httpx.AsyncClient, text: str, voice_id: st
         print("[Callex Voice Engine] ⚠️ Skipped TTS — text is None or empty")
         return
 
+    gpu_ip = os.getenv("CALLEX_GPU_URL", "127.0.0.1")
+    
     print("\\n" + "═"*75)
     print(f"🎙️  [CALLEX PROPRIETARY TTS] Instantiating Zero-Shot Acoustic Clone!")
-    print(f"   ► Core: Local XTTS_v2 GPU Microservice")
-    print(f"   ► Route: http://127.0.0.1:8124/stream_tts")
+    print(f"   ► Core: Remote XTTS_v2 GPU Microservice")
+    print(f"   ► Route: http://{gpu_ip}:8124/stream_tts")
     print(f"   ► Transcript: '{text[:65]}...'")
     print("═"*75 + "\\n")
     
     start_time = time.time()
     
-    # Internal microservice endpoint created exclusively for callex PBX
-    url = "http://127.0.0.1:8124/stream_tts"
+    # Internal microservice endpoint routed globally across server clusters 
+    url = f"http://{gpu_ip}:8124/stream_tts"
     payload = {
         "text": text,
         "language": agent_language[:2] if agent_language else "hi",

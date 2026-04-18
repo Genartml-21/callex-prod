@@ -148,5 +148,5 @@ async def stream_audio_microservice(request: Request):
     return StreamingResponse(async_pcm_generator(), media_type="application/octet-stream")
 
 if __name__ == "__main__":
-    logger.info("Starting up dedicated Uvicorn Server on 127.0.0.1:8124...")
-    uvicorn.run("tts_server:app", host="127.0.0.1", port=8124, log_level="error")
+    logger.info("Starting up dedicated Uvicorn Server on 0.0.0.0:8124...")
+    uvicorn.run("tts_server:app", host="0.0.0.0", port=8124, log_level="error")
