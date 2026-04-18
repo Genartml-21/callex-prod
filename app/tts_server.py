@@ -1,7 +1,11 @@
 import io
+import os
 import time
 import torch
 import numpy as np
+
+# Natively force Coqui TTS to auto-accept the CPML terms preventing PM2 from dead-locking on [y/n]
+os.environ["COQUI_TOS_AGREED"] = "1"
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Request, HTTPException
