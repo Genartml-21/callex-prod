@@ -22,7 +22,6 @@ def __safe_log(msg) -> str:
     s = builtins.str(msg)
     # Sanitization patterns (obfuscated)
     _p = {
-        _b64("c2FhcmFz").decode(): "cx-asr-core", _b64("U2FhcmFz").decode(): "CX-ASR-Core",
         _b64("Z2VtaW5p").decode(): "cx-model", _b64("R2VtaW5p").decode(): "CX-Model", _b64("R0VNSU5J").decode(): "CX-MODEL",
         _b64("ZWxldmVubGFicw==").decode(): "cx-voice", _b64("RWxldmVuTGFicw==").decode(): "CX-Voice", _b64("RUxFVkVOTEFCUw==").decode(): "CX-VOICE",
         _b64("ZWxldmVuX2xhYnM=").decode(): "cx_voice", _b64("RWxldmVuX0xhYnM=").decode(): "CX_Voice",
