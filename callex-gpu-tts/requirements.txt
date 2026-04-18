@@ -1,0 +1,7 @@
+torch
+torchaudio
+numpy
+TTS
+transformers==4.31.0
+fastapi
+uvicorn
