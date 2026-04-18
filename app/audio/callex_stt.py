@@ -5,7 +5,7 @@ import webrtcvad
 from faster_whisper import WhisperModel
 from concurrent.futures import ThreadPoolExecutor
 
-class LocalWhisperSTT:
+class CallexSTT:
     """
     1-to-1 Drop-in Replacement for SarvamStreamingSTT.
     Uses Faster-Whisper locally for secure, ultra-fast real-time Hindi open-source STT.
@@ -45,15 +45,15 @@ class LocalWhisperSTT:
         self._executor = ThreadPoolExecutor(max_workers=3)
         
         # Load global model if not loaded
-        if LocalWhisperSTT._global_model is None:
+        if CallexSTT._global_model is None:
             print(f"[Callex AI STT] Loading Faster-Whisper '{model}' on 'auto' device...")
             # Use FP16 if GPU, else int8
             try:
-                LocalWhisperSTT._global_model = WhisperModel(model, device="auto", compute_type="default")
+                CallexSTT._global_model = WhisperModel(model, device="auto", compute_type="default")
                 print(f"[Callex AI STT] ✅ Model loaded successfully.")
             except Exception as e:
                 print(f"[Callex AI STT] ⚠️ Fallback to small model due to error: {e}")
-                LocalWhisperSTT._global_model = WhisperModel("small", device="cpu", compute_type="int8")
+                CallexSTT._global_model = WhisperModel("small", device="cpu", compute_type="int8")
 
     @property
     def is_connected(self) -> bool:
@@ -118,7 +118,7 @@ class LocalWhisperSTT:
         
         def run_model():
             start = time.time()
-            segments, _ = LocalWhisperSTT._global_model.transcribe(audio_np, beam_size=1, language=self._language, condition_on_previous_text=False)
+            segments, _ = CallexSTT._global_model.transcribe(audio_np, beam_size=1, language=self._language, condition_on_previous_text=False)
             text = " ".join([seg.text for seg in segments]).strip()
             latency = time.time() - start
             return text, latency
