@@ -1,0 +1,383 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      String   @default("admin") // admin, supervisor, analyst
+  password  String
+  createdAt DateTime @default(now())
+  ApiKey    ApiKey[]
+  QAScores  QAScore[]
+  WfmStates WfmState[]
+  AuditLogs AuditLog[]
+  Agents       Agent[]
+  Campaigns    Campaign[]
+  Calls        Call[]       @relation("UserCalls")
+  KnowledgeDocs KnowledgeDoc[]
+  Webhooks     Webhook[]
+  RoutingRules RoutingRule[]
+  FollowUps    FollowUp[]
+}
+
+model Agent {
+  id                String    @id @default(uuid())
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id])
+  name              String
+  description       String?
+  status            String    @default("draft") // draft, active, paused
+  systemPrompt      String?
+  openingLine       String?
+  voice             String    @default("alloy")
+  language          String    @default("en-US")
+  sttEngine         String    @default("deepgram")
+  llmModel          String    @default("gpt-4o")
+  fillerPhrases     String    @default("[\"Let me check...\",\"One moment...\"]")
+  prosodyRate       Float     @default(1.0)
+  prosodyPitch      Float     @default(1.0)
+  ipaLexicon        String    @default("{}")
+  tools             String    @default("[]")
+  topK              Int       @default(5)
+  similarityThresh  Float     @default(0.75)
+  
+  // 15+ New Advanced Configuration Fields
+  fallbackMessage   String?   @default("I'm sorry, I don't have that information right now.")
+  profanityFilter   String    @default("redact") // redact, block, allow
+  topicRestriction  Boolean   @default(false)    // true = strict adherence to prompt
+  backgroundAmbience String   @default("none")   // none, office, call_center, static
+  speakingStyle     String    @default("professional") // professional, friendly, urgent, empathetic
+  bargeInMode       String    @default("balanced") // aggressive, balanced, polite, disabled
+  patienceMs        Int       @default(800)       // 500ms to 2000ms end-of-turn timeout
+  maxDuration       Int       @default(30)        // Minutes
+  temperature       Float     @default(0.7)
+  maxTokens         Int       @default(250)
+  strictToolCalling Boolean   @default(true)
+  ringTimeout       Int       @default(30)        // Seconds before hangup
+  voicemailLogic    String    @default("hangup") // hangup, leave_message, human_escalate
+  webhookUrl        String?
+  autoSummary       Boolean   @default(true)
+  autoSentiment     Boolean   @default(true)
+  recordCall        Boolean   @default(true)
+  processDtmf       Boolean   @default(true) // Listen for dialpad tones
+
+  // NEW: Store Custom Call Analysis schema parameters
+  analysisSchema    String    @default("[]") // JSON array of custom extraction rules
+
+  // THE 20+ INDUSTRY-EXCLUSIVE ADVANCED CALL CENTER FEATURES
+  amdPrecision          String  @default("balanced")    // aggressive, balanced, off (Answering Machine Detection)
+  voicemailDropAudio    String?                         // URL to pre-recorded MP3
+  sentimentRouting      Boolean @default(false)         // Transfer to human if angry
+  competitorAlerts      String  @default("")            // Comma separated competitor names
+  supervisorWhisper     Boolean @default(true)          // Allow live barging/listening
+  piiRedaction          Boolean @default(true)          // Auto-bleep credit cards/SSN
+  geoCallerId           Boolean @default(false)         // Dynamic Area-code matching DID
+  multiAgentHandoff     Boolean @default(false)         // Can transfer to another AI
+  objectionHandling     String  @default("standard")    // standard, persistent (will push back 2x before hanging up)
+  emotionalMirroring    Boolean @default(true)          // Match user's energy/pacing
+  complianceScript      String?                         // Mandatory legal script in first 10s
+  dynamicCodeSwitching  Boolean @default(true)          // Seamlessly swap Hindi/English Mid-sentence
+  dncLitigatorScrub     Boolean @default(true)          // Check serial TCPA litigators
+  callBlending          Boolean @default(false)         // Switch inbound agents to outbound queues when idle
+  costCapTokens         Int     @default(5000)          // Hang up after X tokens
+  postCallSms           String?                         // SMS template to send on call completion
+
+  // DEEP SEMANTIC AUTO-FOLLOW-UP
+  autoFollowUp          Boolean @default(true)          // If user says "kal karna", schedule it.
+  followUpDefaultDays   Int     @default(1)
+  followUpDefaultTime   String  @default("10:00")       // 10:00 AM
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  Calls             Call[]
+  PromptVersion     PromptVersion[]
+  FollowUps         FollowUp[]
+}
+
+model FollowUp {
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  phoneNumber     String
+  originalCallId  String?
+  agentId         String
+  campaignId      String?
+  scheduledFor    DateTime
+  reason          String?
+  status          String   @default("pending") // pending, completed, cancelled, failed
+  createdAt       DateTime @default(now())
+  
+  agent           Agent    @relation(fields: [agentId], references: [id])
+}
+
+model PromptVersion {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  version   Int
+  prompt    String
+  label     String?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Call {
+  id            String    @id @default(uuid())
+  userId        String?
+  user          User?     @relation("UserCalls", fields: [userId], references: [id])
+  agentId       String?
+  agent         Agent?    @relation(fields: [agentId], references: [id])
+  campaignId    String?
+  campaign      Campaign? @relation(fields: [campaignId], references: [id])
+  dispositionId String?
+  disposition   Disposition? @relation(fields: [dispositionId], references: [id])
+  phoneNumber   String
+  direction     String    @default("inbound") // inbound, outbound
+  status        String    @default("active") // active, completed, failed, transferred
+  sentiment     String?   @default("neutral") // positive, neutral, negative, angry
+  duration      Int?      // seconds
+  transcript    String?
+  summary       String?
+  structuredData String?
+  redactedTranscript String?
+  recordingUrl  String?
+  recordingPaused Boolean @default(false)
+  mosScore      Float?
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  Recording     Recording?
+  QAScore       QAScore?
+}
+
+model Campaign {
+  id               String   @id @default(uuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
+  name             String
+  status           String   @default("draft") // draft, running, paused, completed
+  agentId          String?
+  dialingMode      String   @default("predictive") // predictive, progressive, preview
+  callsPerSecond   Int      @default(5)
+  tcpaLock         Boolean  @default(true)
+  dncScrubbing     Boolean  @default(true)
+  amdEnabled       Boolean  @default(true)
+  voicemailDrop    Boolean  @default(false)
+  
+  // NEW ADVANCED FEATURES
+  scriptOverride       String?
+  maxDuration          Int      @default(10)      // Auto-terminate after X minutes
+  maxRetries           Int      @default(0)       // Auto-retry busy/no-answer
+  retryDelayMin        Int      @default(60)      // Delay before retry in min
+  voicemailDropAudio   String?                    // Used over default AMD response
+  localCallerId        Boolean  @default(false)   // Smart DID matching
+  strictLitigatorScrub Boolean  @default(false)   // Enhanced DNC checks
+  sentimentTransfer    Boolean  @default(false)   // Forward angry callers
+  timezoneRespect      Boolean  @default(true)    // Restrict calling hours
+  costCapTokens        Int      @default(5000)    // End call early to save cost
+  postCallSmsTemplate  String?                    // Auto-fire SMS after call
+  
+  // PHASE 2 ADVANCED FEATURES
+  recordCalls          Boolean  @default(true)    // Save audio for this campaign
+  concurrentCallLimit  Int      @default(0)       // 0 = unlimited trunk channels
+  autoPauseFailureRate Int      @default(0)       // Pause if connect rate < X%
+  webhookUrl           String?                    // Post-call ping
+  dynamicVariables     Boolean  @default(false)   // Parse audience as JSON objects
+  transferNumber       String?                    // PSTN # for human handoff
+  transferWhisper      String?                    // TTS read to agent before bridge
+  maxBudgetUsd         Float?                     // Auto stop on cost limit
+  smsOnNoAnswer        String?                    // Hit via SMS if voicemail
+  amdAction            String   @default("hangup")// hangup, leave_message, wait_for_beep
+  
+  // NEW: Store Custom Call Analysis schema parameters
+  analysisSchema       String   @default("[]")    // JSON array of custom extraction rules
+  
+  totalLeads       Int      @default(0)
+  dialedLeads      Int      @default(0)
+  connectedLeads   Int      @default(0)
+  startDate        DateTime?
+  endDate          DateTime?
+  audience         String   @default("[]") // JSON array of phone numbers
+  createdAt        DateTime @default(now())
+  Calls            Call[]
+}
+
+model KnowledgeDoc {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  name        String
+  type        String   @default("pdf") // pdf, api, web
+  status      String   @default("processing") // processing, synced, error
+  chunkCount  Int      @default(0)
+  fileUrl     String?
+  sourceUrl   String?
+  embedding   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Integration {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  connected Boolean  @default(false)
+  config    String   @default("{}") // JSON config
+  createdAt DateTime @default(now())
+}
+
+model Webhook {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  url       String
+  events    String   @default("[]") // JSON array of event names
+  secret    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  keyHash   String   @unique
+  prefix    String
+  env       String   @default("test") // test, live
+  active    Boolean  @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+}
+
+model RoutingRule {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  name        String
+  intentTag   String
+  priority    Int      @default(0)
+  destination String   @default("agent") // agent, human, voicemail
+  agentId     String?
+  queueId     String?
+  whisperMsg  String?
+  ctiDelay    Int      @default(0) // seconds
+  smsEscalation Boolean @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  PhoneNumbers PhoneNumber[]
+}
+
+model VoiceSignature {
+  id          String   @id @default(uuid())
+  phrase      String
+  description String?
+  hashExample String?  // SHA-256 of captured audio segment
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model SystemEvent {
+  id        String   @id @default(uuid())
+  type      String   // call.started, call.ended, agent.error, etc.
+  message   String
+  severity  String   @default("info") // info, warning, error
+  meta      String   @default("{}")
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// NEW ENTERPRISE MODELS (20+ Features Exp.)
+// ==========================================
+
+model Recording {
+  id        String   @id @default(uuid())
+  callId    String   @unique
+  call      Call     @relation(fields: [callId], references: [id])
+  url       String
+  duration  Int      // seconds
+  sizeKb    Int
+  waveform  String?  // JSON array of peaks
+  createdAt DateTime @default(now())
+}
+
+model Disposition {
+  id          String   @id @default(uuid())
+  name        String   @unique // "Sale Closed", "Not Interested", "DNC"
+  category    String   @default("neutral") // positive, negative, neutral
+  requiresNote Boolean @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  Calls       Call[]
+}
+
+model QAScore {
+  id             String   @id @default(uuid())
+  callId         String   @unique
+  call           Call     @relation(fields: [callId], references: [id])
+  scoredByUserId String?
+  user           User?    @relation(fields: [scoredByUserId], references: [id])
+  score          Float    // 0 to 100
+  feedback       String?
+  rubric         String   @default("{}") // JSON details of scoring
+  createdAt      DateTime @default(now())
+}
+
+model DNCList {
+  id        String   @id @default(uuid())
+  number    String   @unique
+  reason    String?
+  addedBy   String?  // User ID or "system"
+  createdAt DateTime @default(now())
+}
+
+model PhoneNumber {
+  id           String   @id @default(uuid())
+  number       String   @unique
+  provider     String   @default("twilio")
+  friendlyName String?
+  status       String   @default("active") // active, inactive, porting
+  routingRuleId String?
+  routingRule  RoutingRule? @relation(fields: [routingRuleId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model WfmState {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
+  state     String   // available, acw, break, lunch, offline
+  duration  Int?     // seconds spent in this state (calculated when state changes)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // "update_routing_rule", "delete_campaign"
+  entity    String   // "routing_rule", "campaign"
+  entityId  String
+  details   String   @default("{}") // JSON "before" and "after" state
+  createdAt DateTime @default(now())
+}
+
+model BillingStat {
+  id            String   @id @default(uuid())
+  month         String   @unique // "2026-02"
+  telecomMins   Int      @default(0)
+  llmTokens     Int      @default(0)
+  sttMinutes    Int      @default(0)
+  totalCostUsd  Float    @default(0.0)
+  updatedAt     DateTime @updatedAt
+}
+

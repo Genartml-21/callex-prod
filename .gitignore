@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+!enterprise/frontend/dist/
+build/
+*.egg
+
+# Environment
+.env
+venv/
+.venv/
+node_modules/
+
+# Database
+*.db
+*.db-journal
+
+# Recordings (binary data, not tracked)
+recordings/
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config files with secrets
+bot_config.json
+
+# Archive (old/unused files)
+_archive/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+firebase_credentials.json
+.env
+node_modules/
+__pycache__/
+*.log
+venv/
+models/

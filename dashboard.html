@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Callex Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090b;
+            --surface: rgba(24, 24, 27, 0.55);
+            --surface-2: rgba(39, 39, 42, 0.4);
+            --border: rgba(255, 255, 255, 0.07);
+            --border-hover: rgba(255, 255, 255, 0.14);
+            --text: #f4f4f5;
+            --text-sec: #a1a1aa;
+            --text-dim: #71717a;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --success-dim: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            --warning-dim: rgba(245, 158, 11, 0.15);
+            --danger: #ef4444;
+            --danger-dim: rgba(239, 68, 68, 0.15);
+            --purple: #a78bfa;
+            --purple-dim: rgba(167, 139, 250, 0.15);
+            --radius: 14px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 10% 20%, rgba(56, 189, 248, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(167, 139, 250, 0.02) 0%, transparent 60%);
+        }
+
+        .container { max-width: 1360px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ── Header ── */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 1.5rem; margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 900;
+        }
+        .logo h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
+        .logo p { font-size: 0.75rem; color: var(--text-dim); margin-top: 1px; }
+
+        .header-right { display: flex; align-items: center; gap: 1rem; }
+        .badge {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: var(--surface); border: 1px solid var(--border);
+            padding: 0.4rem 0.9rem; border-radius: 100px;
+            font-size: 0.78rem; font-weight: 600; color: var(--text-sec);
+        }
+        .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .dot.warn { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+        .dot.dead { background: var(--text-dim); box-shadow: none; animation: none; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        #uptime-badge { font-variant-numeric: tabular-nums; }
+
+        /* ── Grid System ── */
+        .grid { display: grid; gap: 1rem; }
+        .grid-top { grid-template-columns: repeat(4, 1fr); }
+        .grid-mid { grid-template-columns: 1fr 1fr; margin-top: 1rem; }
+        .grid-bot { grid-template-columns: 2fr 1fr 1fr; margin-top: 1rem; }
+        .grid-agents { margin-top: 1rem; }
+
+        /* ── Card ── */
+        .card {
+            background: var(--surface);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.4rem 1.5rem;
+            transition: border-color 0.25s ease, transform 0.2s ease;
+        }
+        .card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+
+        .card-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 0.8rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .card-label .icon { font-size: 0.85rem; }
+
+        .metric {
+            font-size: 2.8rem; font-weight: 900; line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .metric .unit { font-size: 1.1rem; font-weight: 600; color: var(--text-dim); margin-left: 2px; }
+
+        .sub { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.5rem; }
+
+        .color-success { color: var(--success); }
+        .color-warning { color: var(--warning); }
+        .color-danger { color: var(--danger); }
+        .color-accent { color: var(--accent); }
+        .color-purple { color: var(--purple); }
+
+        /* ── Progress Bar ── */
+        .bar-bg {
+            width: 100%; height: 5px; background: rgba(255,255,255,0.06);
+            border-radius: 10px; margin-top: 0.9rem; overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%; border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease;
+        }
+
+        /* ── Today vs Yesterday ── */
+        .compare-row {
+            display: flex; gap: 1.5rem; margin-top: 0.6rem;
+        }
+        .compare-item { flex: 1; }
+        .compare-item .label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+        .compare-item .val { font-size: 1.6rem; font-weight: 800; margin-top: 0.15rem; }
+        .compare-delta {
+            font-size: 0.72rem; font-weight: 600; padding: 2px 6px;
+            border-radius: 4px; margin-left: 0.4rem;
+        }
+        .delta-up { background: var(--success-dim); color: var(--success); }
+        .delta-down { background: var(--danger-dim); color: var(--danger); }
+        .delta-flat { background: var(--surface-2); color: var(--text-dim); }
+
+        /* ── Sentiment Bars ── */
+        .sentiment-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.55rem; }
+        .sentiment-label { font-size: 0.72rem; font-weight: 600; width: 60px; color: var(--text-sec); text-transform: capitalize; }
+        .sentiment-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+        .sentiment-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+        .sentiment-count { font-size: 0.72rem; font-weight: 700; width: 30px; text-align: right; color: var(--text-sec); }
+
+        /* ── Live Call Feed ── */
+        .feed { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto; }
+        .feed::-webkit-scrollbar { width: 4px; }
+        .feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .feed-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface-2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.6rem 0.8rem;
+            font-size: 0.78rem; transition: background 0.2s;
+        }
+        .feed-item:hover { background: rgba(56, 189, 248, 0.06); }
+        .feed-left { display: flex; align-items: center; gap: 0.6rem; }
+        .feed-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 1.5s infinite; }
+        .feed-phone { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+        .feed-meta { color: var(--text-dim); font-size: 0.72rem; }
+        .feed-duration { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+        .feed-empty { color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 2rem 0; }
+
+        /* ── Disposition Pills ── */
+        .disp-list { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .disp-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.45rem 0.7rem; border-radius: 6px;
+            background: var(--surface-2); font-size: 0.78rem;
+        }
+        .disp-name { font-weight: 500; color: var(--text-sec); }
+        .disp-count { font-weight: 700; color: var(--text); }
+
+        /* ── Agent Table ── */
+        .agent-table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
+        .agent-table th {
+            text-align: left; font-size: 0.68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+            padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border);
+        }
+        .agent-table td {
+            padding: 0.6rem 0.8rem; font-size: 0.8rem; color: var(--text-sec);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .agent-table tr:hover td { color: var(--text); background: rgba(255,255,255,0.02); }
+        .tag {
+            display: inline-block; padding: 2px 7px; border-radius: 4px;
+            font-size: 0.68rem; font-weight: 700;
+        }
+        .tag-on { background: var(--success-dim); color: var(--success); }
+        .tag-off { background: var(--surface-2); color: var(--text-dim); }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .grid-top { grid-template-columns: repeat(2, 1fr); }
+            .grid-mid, .grid-bot { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 550px) {
+            .grid-top { grid-template-columns: 1fr; }
+            header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">C</div>
+            <div>
+                <h1>Callex Command Center</h1>
+                <p>Real-Time Voice Engine Telemetry</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="badge" id="uptime-badge">⏱ Uptime: <span id="uptime">--</span></div>
+            <div class="badge" id="conn-badge"><div class="dot" id="conn-dot"></div> <span id="conn-text">Connecting</span></div>
+        </div>
+    </header>
+
+    <!-- ═══ ROW 1 — Key Metrics ═══ -->
+    <div class="grid grid-top">
+        <div class="card">
+            <div class="card-label"><span class="icon">📞</span> Active Calls</div>
+            <div class="metric color-accent" id="active-calls">0</div>
+            <div class="sub">Live WebSocket streams right now</div>
+        </div>
+        <div class="card">
+            <div class="card-label"><span class="icon">⚡</span> LLM Latency (TTFB)</div>
+            <div class="metric" id="llm-lat">0<span class="unit">ms</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="llm-bar" style="width:0%; background: var(--success);"></div></div>
+            <div class="sub">AI think time — avg of last 50 turns</div>
+        </div>
+        <div class="card">
+            <div class="card-label"><span class="icon">🔊</span> TTS Latency</div>
+            <div class="metric" id="tts-lat">0<span class="unit">ms</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="tts-bar" style="width:0%; background: var(--success);"></div></div>
+            <div class="sub">Voice generation — avg stream duration</div>
+        </div>
+        <div class="card">
+            <div class="card-label"><span class="icon">🎯</span> Conversion Rate</div>
+            <div class="metric color-success" id="conversion">0<span class="unit">%</span></div>
+            <div class="sub">Goal agreements / Total calls</div>
+        </div>
+    </div>
+
+    <!-- ═══ ROW 2 — System + Today vs Yesterday ═══ -->
+    <div class="grid grid-mid">
+        <div class="card">
+            <div class="card-label"><span class="icon">🖥️</span> System Resources</div>
+            <div style="display: flex; gap: 2rem; margin-top: 0.3rem;">
+                <div>
+                    <div class="sub" style="margin:0;">CPU</div>
+                    <div class="metric" style="font-size:1.8rem;" id="cpu">--<span class="unit">%</span></div>
+                </div>
+                <div>
+                    <div class="sub" style="margin:0;">Memory</div>
+                    <div class="metric" style="font-size:1.8rem;" id="mem">--<span class="unit">MB</span></div>
+                </div>
+                <div>
+                    <div class="sub" style="margin:0;">Errors</div>
+                    <div class="metric" style="font-size:1.8rem;" id="errors">0</div>
+                </div>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" id="cpu-bar" style="width:0%; background: var(--success);"></div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-label"><span class="icon">📊</span> Today vs Yesterday</div>
+            <div class="compare-row">
+                <div class="compare-item">
+                    <div class="label">Today</div>
+                    <div class="val" id="today-calls">0</div>
+                </div>
+                <div class="compare-item">
+                    <div class="label">Yesterday</div>
+                    <div class="val" style="color: var(--text-sec);" id="yest-calls">0</div>
+                </div>
+            </div>
+            <div class="sub" style="margin-top:0.8rem;">
+                <span id="delta-badge" class="compare-delta delta-flat">—</span> change in volume
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ROW 3 — Live Feed + Sentiment + Dispositions ═══ -->
+    <div class="grid grid-bot">
+        <div class="card">
+            <div class="card-label"><span class="icon">🟢</span> Live Call Feed</div>
+            <div class="feed" id="call-feed">
+                <div class="feed-empty">No active calls right now</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-label"><span class="icon">😊</span> Sentiment Breakdown</div>
+            <div id="sentiment-block">
+                <div class="sentiment-row">
+                    <div class="sentiment-label">Positive</div>
+                    <div class="sentiment-bar-bg"><div class="sentiment-bar-fill" id="sent-pos-bar" style="width:0%; background: var(--success);"></div></div>
+                    <div class="sentiment-count" id="sent-pos">0</div>
+                </div>
+                <div class="sentiment-row">
+                    <div class="sentiment-label">Neutral</div>
+                    <div class="sentiment-bar-bg"><div class="sentiment-bar-fill" id="sent-neu-bar" style="width:0%; background: var(--accent);"></div></div>
+                    <div class="sentiment-count" id="sent-neu">0</div>
+                </div>
+                <div class="sentiment-row">
+                    <div class="sentiment-label">Negative</div>
+                    <div class="sentiment-bar-bg"><div class="sentiment-bar-fill" id="sent-neg-bar" style="width:0%; background: var(--danger);"></div></div>
+                    <div class="sentiment-count" id="sent-neg">0</div>
+                </div>
+            </div>
+            <div style="margin-top:1.2rem; border-top:1px solid var(--border); padding-top:1rem;">
+                <div class="card-label" style="margin-bottom:0.4rem;"><span class="icon">📋</span> Analytics Totals</div>
+                <div style="display:flex; gap:1.5rem;">
+                    <div><div class="sub" style="margin:0">Total</div><div style="font-size:1.3rem; font-weight:800;" id="total-calls">0</div></div>
+                    <div><div class="sub" style="margin:0; color:var(--success)">Agreed</div><div style="font-size:1.3rem; font-weight:800; color:var(--success);" id="total-agreed">0</div></div>
+                    <div><div class="sub" style="margin:0; color:var(--danger)">Declined</div><div style="font-size:1.3rem; font-weight:800; color:var(--danger);" id="total-declined">0</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-label"><span class="icon">🏷️</span> Top Dispositions</div>
+            <div class="disp-list" id="disp-list">
+                <div class="feed-empty">No disposition data yet</div>
+            </div>
+            <div style="margin-top:1.2rem; border-top:1px solid var(--border); padding-top:1rem;">
+                <div class="card-label" style="margin-bottom:0.4rem;"><span class="icon">⏱</span> Avg Call Duration</div>
+                <div class="metric" style="font-size:1.6rem;" id="avg-dur">0<span class="unit">s</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ROW 4 — Active Agents ═══ -->
+    <div class="grid grid-agents">
+        <div class="card">
+            <div class="card-label"><span class="icon">🤖</span> Deployed Agents (<span id="agent-count">0</span>)</div>
+            <table class="agent-table" id="agent-table">
+                <thead><tr><th>Name</th><th>NLP</th><th>Voice Speed</th><th>Agent ID</th></tr></thead>
+                <tbody id="agent-tbody">
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Loading agents...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function fmtUptime(s) {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm ' + Math.floor(s % 60) + 's';
+}
+function fmtDuration(s) {
+    const m = Math.floor(s / 60), sec = s % 60;
+    return m > 0 ? m + ':' + String(sec).padStart(2, '0') : sec + 's';
+}
+function latencyColor(ms, threshLow, threshHigh) {
+    if (ms < threshLow) return { cls: 'color-success', bg: 'var(--success)', pct: Math.min((ms / threshHigh) * 100, 100) };
+    if (ms < threshHigh) return { cls: 'color-warning', bg: 'var(--warning)', pct: Math.min((ms / threshHigh) * 100, 100) };
+    return { cls: 'color-danger', bg: 'var(--danger)', pct: 100 };
+}
+
+async function refresh() {
+    try {
+        const r = await fetch('/api/telemetry/live');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+
+        // Connection status
+        document.getElementById('conn-dot').className = 'dot';
+        document.getElementById('conn-text').textContent = 'Live';
+
+        // Uptime
+        document.getElementById('uptime').textContent = fmtUptime(d.uptime_seconds);
+
+        // Active calls
+        document.getElementById('active-calls').textContent = d.active_calls;
+
+        // LLM Latency
+        const llm = d.average_latency_ms;
+        const llmC = latencyColor(llm, 800, 1500);
+        const llmEl = document.getElementById('llm-lat');
+        llmEl.innerHTML = Math.round(llm) + '<span class="unit">ms</span>';
+        llmEl.className = 'metric ' + llmC.cls;
+        document.getElementById('llm-bar').style.width = llmC.pct + '%';
+        document.getElementById('llm-bar').style.background = llmC.bg;
+
+        // TTS Latency
+        const tts = d.average_tts_latency_ms;
+        const ttsC = latencyColor(tts, 2000, 5000);
+        const ttsEl = document.getElementById('tts-lat');
+        ttsEl.innerHTML = Math.round(tts) + '<span class="unit">ms</span>';
+        ttsEl.className = 'metric ' + ttsC.cls;
+        document.getElementById('tts-bar').style.width = ttsC.pct + '%';
+        document.getElementById('tts-bar').style.background = ttsC.bg;
+
+        // Conversion
+        document.getElementById('conversion').innerHTML = d.analytics.agreement_percentage + '<span class="unit">%</span>';
+
+        // System
+        const cpu = d.cpu_load;
+        const cpuC = latencyColor(cpu, 60, 85);
+        document.getElementById('cpu').innerHTML = cpu + '<span class="unit">%</span>';
+        document.getElementById('mem').innerHTML = d.memory_mb + '<span class="unit">MB</span>';
+        document.getElementById('errors').textContent = (d.errors.drops || 0) + (d.errors.errors || 0);
+        document.getElementById('cpu-bar').style.width = cpu + '%';
+        document.getElementById('cpu-bar').style.background = cpuC.bg;
+
+        // Today vs Yesterday
+        const today = d.analytics.today_calls, yest = d.analytics.yesterday_calls;
+        document.getElementById('today-calls').textContent = today;
+        document.getElementById('yest-calls').textContent = yest;
+        const db = document.getElementById('delta-badge');
+        if (yest === 0) { db.className = 'compare-delta delta-flat'; db.textContent = '—'; }
+        else {
+            const pct = Math.round(((today - yest) / yest) * 100);
+            if (pct > 0) { db.className = 'compare-delta delta-up'; db.textContent = '↑ +' + pct + '%'; }
+            else if (pct < 0) { db.className = 'compare-delta delta-down'; db.textContent = '↓ ' + pct + '%'; }
+            else { db.className = 'compare-delta delta-flat'; db.textContent = '0%'; }
+        }
+
+        // Live call feed
+        const feedEl = document.getElementById('call-feed');
+        if (d.active_call_details && d.active_call_details.length > 0) {
+            feedEl.innerHTML = d.active_call_details.map(c =>
+                '<div class="feed-item">' +
+                    '<div class="feed-left">' +
+                        '<div class="feed-dot"></div>' +
+                        '<span class="feed-phone">' + (c.phone || 'Unknown') + '</span>' +
+                        '<span class="feed-meta">' + c.messages + ' msgs</span>' +
+                    '</div>' +
+                    '<span class="feed-duration">' + fmtDuration(c.duration_s) + '</span>' +
+                '</div>'
+            ).join('');
+        } else {
+            feedEl.innerHTML = '<div class="feed-empty">No active calls right now</div>';
+        }
+
+        // Sentiment
+        const s = d.analytics.sentiment;
+        const sTotal = (s.positive + s.negative + s.neutral) || 1;
+        document.getElementById('sent-pos').textContent = s.positive;
+        document.getElementById('sent-neu').textContent = s.neutral;
+        document.getElementById('sent-neg').textContent = s.negative;
+        document.getElementById('sent-pos-bar').style.width = ((s.positive / sTotal) * 100) + '%';
+        document.getElementById('sent-neu-bar').style.width = ((s.neutral / sTotal) * 100) + '%';
+        document.getElementById('sent-neg-bar').style.width = ((s.negative / sTotal) * 100) + '%';
+
+        // Analytics totals
+        document.getElementById('total-calls').textContent = d.analytics.total_calls;
+        document.getElementById('total-agreed').textContent = d.analytics.total_agreed;
+        document.getElementById('total-declined').textContent = d.analytics.total_declined;
+
+        // Dispositions
+        const dispEl = document.getElementById('disp-list');
+        const disps = d.analytics.top_dispositions;
+        const dispKeys = Object.keys(disps);
+        if (dispKeys.length > 0) {
+            dispEl.innerHTML = dispKeys.map(k =>
+                '<div class="disp-item"><span class="disp-name">' + k + '</span><span class="disp-count">' + disps[k] + '</span></div>'
+            ).join('');
+        } else {
+            dispEl.innerHTML = '<div class="feed-empty">No disposition data yet</div>';
+        }
+
+        // Avg Duration
+        document.getElementById('avg-dur').innerHTML = d.analytics.avg_duration_s + '<span class="unit">s</span>';
+
+        // Agents
+        const agTbody = document.getElementById('agent-tbody');
+        document.getElementById('agent-count').textContent = d.agents.length;
+        if (d.agents.length > 0) {
+            agTbody.innerHTML = d.agents.map(a =>
+                '<tr>' +
+                    '<td style="font-weight:600; color:var(--text);">' + a.name + '</td>' +
+                    '<td><span class="tag ' + (a.nlp ? 'tag-on' : 'tag-off') + '">' + (a.nlp ? 'ON' : 'OFF') + '</span></td>' +
+                    '<td>' + (a.speed || 1.0) + 'x</td>' +
+                    '<td style="font-family:monospace; font-size:0.72rem; color:var(--text-dim);">' + a.id + '</td>' +
+                '</tr>'
+            ).join('');
+        } else {
+            agTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">No agents found</td></tr>';
+        }
+
+        // If high latency, change header badge
+        if (llm > 1500) {
+            document.getElementById('conn-dot').className = 'dot warn';
+            document.getElementById('conn-text').textContent = 'High Latency';
+        }
+
+    } catch (e) {
+        document.getElementById('conn-dot').className = 'dot dead';
+        document.getElementById('conn-text').textContent = 'Offline';
+    }
+}
+
+setInterval(refresh, 1500);
+refresh();
+</script>
+</body>
+</html>
