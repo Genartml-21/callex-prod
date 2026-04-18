@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "cx-voice-engine",
-      script: "python3",
+      script: "venv/bin/python3",
       args: "-m app.main",
       cwd: "./",
       interpreter: "none",
