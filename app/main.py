@@ -23,10 +23,7 @@ def __safe_log(msg) -> str:
     # Sanitization patterns (obfuscated)
     _p = {
         _b64("Z2VtaW5p").decode(): "cx-model", _b64("R2VtaW5p").decode(): "CX-Model", _b64("R0VNSU5J").decode(): "CX-MODEL",
-        _b64("ZWxldmVubGFicw==").decode(): "cx-voice", _b64("RWxldmVuTGFicw==").decode(): "CX-Voice", _b64("RUxFVkVOTEFCUw==").decode(): "CX-VOICE",
-        _b64("ZWxldmVuX2xhYnM=").decode(): "cx_voice", _b64("RWxldmVuX0xhYnM=").decode(): "CX_Voice",
         _b64("Z2VuZXJhdGl2ZWxhbmd1YWdlLmdvb2dsZWFwaXMuY29t").decode(): "llm-api.callex.ai",
-        _b64("YXBpLmVsZXZlbmxhYnMuaW8=").decode(): "voice-api.callex.ai",
         _b64("R29vZ2xlIEdlbkFJ").decode(): "CX-AI-Engine", _b64("Z29vZ2xlLmdlbmFp").decode(): "cx.ai.engine"
     }
     for k, v in _p.items(): s = s.replace(k, v)
@@ -242,15 +239,7 @@ class CallexVoiceKeyManager:
             return f"healthy={h}, exhausted={d}, cooldown={c}, total={len(self._keys)}"
 
 
-# Load Callex Voice API keys from environment (no hardcoded defaults)
-_voice_keys = [
-    os.getenv("CALLEX_VOICE_KEY_1", ""),
-    os.getenv("CALLEX_VOICE_KEY_2", ""),
-    os.getenv("CALLEX_VOICE_KEY_3", ""),
-    os.getenv("CALLEX_VOICE_KEY_4", ""),
-    os.getenv("CALLEX_VOICE_KEY_5", ""),
-]
-voice_key_manager = CallexVoiceKeyManager(_voice_keys)
+# ───────── Native Local Key Pools Removed for TTS Microservice ─────────
 
 # TTS concurrency limiter — prevents connection pool saturation at 100+ calls
 # Each Callex-Voice-Engine stream holds an HTTP connection open for 1-3 seconds.
@@ -1514,154 +1503,65 @@ from app.services.analytics import analyze_call_outcome, auto_train_sandbox_agen
 
 
 async def tts_stream_generate(client: httpx.AsyncClient, text: str, voice_id: str = None, is_fallback=False, agent_voice_speed: float = None, agent_language: str = None, tts_hints: dict = None) -> AsyncGenerator[bytes, None]:
-    """Stream TTS audio with automatic key-pool failover.
-    
-    Uses voice_key_manager to cycle through healthy API keys.
-    If a key fails (credits exhausted, rate limited), it instantly
-    retries with the next healthy key — zero downtime for the caller.
     """
-    # ── HARD GUARD: Never allow None/empty text into TTS pipeline ──
+    Stream TTS audio utilizing your fully decoupled XTTS_v2 Microservice on Port 8124.
+    Bypasses external APIs completely, operating inside pure 16KHz PCM arrays natively.
+    """
     if not text or not isinstance(text, str) or not text.strip():
         print("[Callex Voice Engine] ⚠️ Skipped TTS — text is None or empty")
         return
 
-    resolved_voice_id = voice_id or GENARTML_VOICE_ID
-    
-    # Auto-translate legacy/OpenAI voice names to Callex Voice IDs
-    CALLEX_VOICE_MAP = {
-        'alloy': 'MF4J4IDTRo0AxOO4dpFR',    # Devi (Clear Hindi)
-        'echo': '1qEiC6qsybMkmnNdVMbK',      # Monika (Modulated, Professional)
-        'fable': 'qDuRKMlYmrm8trt5QyBn',     # Taksh (Powerful & Commanding)
-        'onyx': 'LQ2auZHpAQ9h4azztqMT',      # Parveen (Confident Male)
-        'nova': 's6cZdgI3j07hf4frz4Q8',      # Arvi (Desi Conversational)
-        'shimmer': 'MF4J4IDTRo0AxOO4dpFR',   # Devi (Clear Hindi)
-    }
-    if resolved_voice_id and resolved_voice_id.lower() in CALLEX_VOICE_MAP:
-        mapped_id = CALLEX_VOICE_MAP[resolved_voice_id.lower()]
-        print(f"[Callex Voice Engine] Auto-mapped voice '{resolved_voice_id}' -> Callex Voice ID '{mapped_id[:8]}...'")
-        resolved_voice_id = mapped_id
-    
-    if is_fallback:
-        print(f"[Callex Voice Engine] ⚠️ Initiating Fallback Stream for: '{text[:50]}...'")
-        resolved_voice_id = GENARTML_VOICE_ID  # Force default voice
-    else:
-        print(f"[Callex Voice Engine] Starting stream for: '{text[:50]}...' (voice={resolved_voice_id[:8] if resolved_voice_id else 'None'}...)")
-        
+    print(f"[Callex Voice Engine] Calling Local Native TTS Server for: '{text[:50]}...'")
     start_time = time.time()
     
-    _tts_api = base64.b64decode(b'aHR0cHM6Ly9hcGkuZWxldmVubGFicy5pby92MS90ZXh0LXRvLXNwZWVjaC8=').decode()
-    url = f"{_tts_api}{resolved_voice_id}/stream?output_format=pcm_16000"
-    # Select TTS model: Gujarati needs cx-voice-v3 (only model with Gujarati support)
-    # Hindi/English use cx-voice-fast for ultra-low latency (~75ms)
-    if agent_language == "gu-IN":
-        tts_model = _b64("ZWxldmVuX3Yz").decode()
-    else:
-        tts_model = _b64("ZWxldmVuX2ZsYXNoX3YyXzU=").decode()
-
-    # Apply dynamic tone hints if provided
-    current_stability = tts_hints.get("stability", VOICE_STABILITY) if tts_hints else VOICE_STABILITY
-    current_style = tts_hints.get("style", VOICE_STYLE) if tts_hints else VOICE_STYLE
-
+    # Internal microservice endpoint created exclusively for callex PBX
+    url = "http://127.0.0.1:8124/stream_tts"
     payload = {
         "text": text,
-        "model_id": tts_model,
-        "voice_settings": {
-            "stability": current_stability,
-            "similarity_boost": VOICE_SIMILARITY_BOOST,
-            "style": current_style,
-            "use_speaker_boost": True,
-            "speed": agent_voice_speed if agent_voice_speed is not None else VOICE_SPEED
-        }
+        "language": agent_language[:2] if agent_language else "hi",
+        "reference_voice": "data/callex_reference.wav" # Assumed path for voice cloning
     }
 
-    # Build the list of keys to try: current key first, then all other healthy keys
-    primary_key = voice_key_manager.get_key()
-    keys_to_try = [primary_key] + voice_key_manager.get_all_keys_for_retry(exclude_key=primary_key)
-    
-    for attempt, api_key in enumerate(keys_to_try):
-        headers = {
-            "xi-api-key": api_key,
-            "Content-Type": "application/json"
-        }
-        try:
-            # Acquire TTS semaphore — prevents connection pool saturation
-            async with _tts_semaphore:
-                async with client.stream("POST", url, json=payload, headers=headers, timeout=15.0) as response:
-                    if response.status_code != 200:
-                        error_text = await response.aread()
-                        print(f"[Callex Voice Engine] ⚠️ Key #{attempt + 1} failed (HTTP {response.status_code}): {error_text[:200]}")
-                        
-                        # Report the failure to the key manager (marks dead or cooldown)
-                        voice_key_manager.report_failure(api_key, response.status_code)
-                        
-                        # If there are more keys to try, continue the loop silently
-                        if attempt < len(keys_to_try) - 1:
-                            print(f"[Callex Voice Engine] 🔄 Retrying with next key... (pool: {voice_key_manager.pool_status})")
-                            continue
-                        
-                        # All keys exhausted — try voice fallback as last resort
-                        if not is_fallback and GENARTML_VOICE_ID:
-                            print(f"[Callex Voice Engine] 🔄 All keys failed. Trying fallback voice...")
-                            async for fallback_chunk in tts_stream_generate(client, text, voice_id=GENARTML_VOICE_ID, is_fallback=True):
-                                yield fallback_chunk
-                            return
-                        else:
-                            print("[Callex Voice Engine] ❌ All keys and fallback exhausted. Returning silence.")
-                            return
-                    
-                    # ✅ Success — stream with fast first-chunk, efficient rest
-                    # LATENCY FIX: First yield = tiny 8KB (250ms audio) so caller
-                    # hears bot ASAP. Subsequent yields = 32KB for efficient streaming.
-                    is_first_yield = True
-                    buffer = b""
-                    CHUNK_THRESHOLD = 4000    # 0.125s — ultra-fast first playback for lowest perceived latency
-                    
-                    async for chunk in response.aiter_bytes():
-                        if chunk:
-                            buffer += chunk
-                            if len(buffer) >= CHUNK_THRESHOLD:
-                                # CRITICAL: PCM-16 expects EXACTLY 2 bytes per sample.
-                                # If buffer length is odd, hold back 1 byte of the stream.
-                                yield_len = len(buffer) - (len(buffer) % 2)
-                                if yield_len > 0:
-                                    to_yield = buffer[:yield_len]
-                                    buffer = buffer[yield_len:]  # Keep the remaining 1 byte if odd
-                                    
-                                    if is_first_yield:
-                                        print(f"[Callex Voice Engine] ⚡ First bytes out in {time.time() - start_time:.2f}s (key #{attempt + 1})")
-                                        is_first_yield = False
-                                        CHUNK_THRESHOLD = 32000  # Shift to bigger chunks for efficiency
-                                    
-                                    yield to_yield
-
-                    if buffer and len(buffer) > 1: # Only yield if even
-                        yield_len = len(buffer) - (len(buffer) % 2)
-                        yield buffer[:yield_len]
-                    
-                    # Success — break out of the retry loop
-                    print(f"[Callex Voice Engine] ✅ Stream complete ({time.time() - start_time:.2f}s)")
+    try:
+        async with _tts_semaphore:
+            async with client.stream("POST", url, json=payload, timeout=25.0) as response:
+                if response.status_code != 200:
+                    error_text = await response.aread()
+                    print(f"[Callex Voice Engine] ❌ Microservice API Failed ({response.status_code}): {error_text}")
                     return
+
+                # Microservice streams chunks identically to an external API
+                is_first_yield = True
+                buffer = b""
+                CHUNK_THRESHOLD = 4000    # 0.125s — ultra-fast first playback
                 
-        except asyncio.TimeoutError:
-            print(f"[Callex Voice Engine] ⏱️ Timeout on key #{attempt + 1}")
-            voice_key_manager.report_failure(api_key, 429)  # Treat timeout like rate-limit
-            if attempt < len(keys_to_try) - 1:
-                continue
-            if not is_fallback:
-                async for fallback_chunk in tts_stream_generate(client, text, voice_id=GENARTML_VOICE_ID, is_fallback=True):
-                    yield fallback_chunk
+                async for chunk in response.aiter_bytes():
+                    if chunk:
+                        buffer += chunk
+                        if len(buffer) >= CHUNK_THRESHOLD:
+                            # CRITICAL: PCM-16 expects EXACTLY 2 bytes per sample.
+                            # If buffer length is odd, hold back 1 byte of the stream.
+                            yield_len = len(buffer) - (len(buffer) % 2)
+                            if yield_len > 0:
+                                to_yield = buffer[:yield_len]
+                                buffer = buffer[yield_len:]  # Keep the remaining 1 byte if odd
+                                
+                                if is_first_yield:
+                                    print(f"[Callex Voice Engine] ⚡ First PCM bytes streamed back globally in {time.time() - start_time:.2f}s")
+                                    is_first_yield = False
+                                    CHUNK_THRESHOLD = 32000  # Shift to bigger chunks for efficiency
+                                
+                                yield to_yield
+
+                if buffer and len(buffer) > 1: # Only yield if even
+                    yield_len = len(buffer) - (len(buffer) % 2)
+                    yield buffer[:yield_len]
+                
+                print(f"[Callex Voice Engine] ✅ Local audio complete ({time.time() - start_time:.2f}s)")
                 return
-        except Exception as e:
-            print(f"[Callex Voice Engine] ❌ Error on key #{attempt + 1}: {__safe_log(e)}")
-            if attempt < len(keys_to_try) - 1:
-                continue
-            if not is_fallback:
-                async for fallback_chunk in tts_stream_generate(client, text, voice_id=GENARTML_VOICE_ID, is_fallback=True):
-                    yield fallback_chunk
-                return
-    
-    
-    print(f"[Callex Voice Engine] Stream ended ({time.time() - start_time:.2f}s)")
+    except Exception as e:
+        print(f"[Callex Voice Engine] ❌ Critical System failure on local TTS Request: {__safe_log(e)}")
+
 
 # ───────── CRM PHONE LOOKUP ─────────
 _crm_phone_cache = {}
