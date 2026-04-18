@@ -1511,7 +1511,13 @@ async def tts_stream_generate(client: httpx.AsyncClient, text: str, voice_id: st
         print("[Callex Voice Engine] ⚠️ Skipped TTS — text is None or empty")
         return
 
-    print(f"[Callex Voice Engine] Calling Local Native TTS Server for: '{text[:50]}...'")
+    print("\\n" + "═"*75)
+    print(f"🎙️  [CALLEX PROPRIETARY TTS] Instantiating Zero-Shot Acoustic Clone!")
+    print(f"   ► Core: Local XTTS_v2 GPU Microservice")
+    print(f"   ► Route: http://127.0.0.1:8124/stream_tts")
+    print(f"   ► Transcript: '{text[:65]}...'")
+    print("═"*75 + "\\n")
+    
     start_time = time.time()
     
     # Internal microservice endpoint created exclusively for callex PBX
@@ -2194,9 +2200,16 @@ async def _handle_call(ws: WebSocket, route_agent_id: str = None):
                 )
                 await stt.connect()
                 callex_stt = stt
-                print("[SST_MODEL_2 WS] ✅ Streaming STT ready")
+                
+                print("\\n" + "═"*75)
+                print(f"⚡ [CALLEX PROPRIETARY STT] Streaming Emformer Engine Successfully Bound!")
+                print(f"   ► Architecture: 40ms Sub-word Unigram Tokens (Offline)")
+                print(f"   ► Pipeline: Conformer CTC -> KenLM AutoCorrect")
+                print(f"   ► Action: PBX Audio stream routing explicitly to Custom Vector Space!")
+                print("═"*75 + "\\n")
+                
             except Exception as e:
-                print(f"[SST_MODEL_2 WS] ❌ Failed to connect: {__safe_log(e)} (batch ASR fallback active)")
+                print(f"[CALLEX PROPRIETARY STT] ❌ Failed to connect explicitly: {__safe_log(e)}")
                 import traceback
                 traceback.print_exc()
 
