@@ -1523,16 +1523,23 @@ async def tts_stream_generate(client: httpx.AsyncClient, text: str, voice_id: st
     start_time = time.time()
     
     # Internal microservice endpoint routed globally across server clusters 
-    url = f"http://{gpu_ip}:8124/stream_tts"
+    url = f"http://{gpu_ip}:8124/v2/synthesize"
+    
     payload = {
         "text": text,
         "language": agent_language[:2] if agent_language else "hi",
         "reference_voice": "data/callex_reference.wav" # Assumed path for voice cloning
     }
+    
+    # GPU Microservice Authentication Token
+    headers = {
+        "Authorization": "Bearer cx_CifT3J5hxOiAi1QI5h8PFQYA4zBwEbvLc9VpQzthzYQ",
+        "Content-Type": "application/json"
+    }
 
     try:
         async with _tts_semaphore:
-            async with client.stream("POST", url, json=payload, timeout=25.0) as response:
+            async with client.stream("POST", url, json=payload, headers=headers, timeout=25.0) as response:
                 if response.status_code != 200:
                     error_text = await response.aread()
                     print(f"[Callex Voice Engine] ❌ Microservice API Failed ({response.status_code}): {error_text}")
