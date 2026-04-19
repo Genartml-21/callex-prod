@@ -1,0 +1,96 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  CALLEX TTS — Distributed Training Configuration                   ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+training:
+  # ── Core ──
+  epochs: 10000
+  batch_size: 32
+  gradient_accumulation_steps: 4     # Effective batch = 32 * 4 = 128
+  seed: 42
+  deterministic: false
+
+  # ── Mixed Precision ──
+  fp16: true
+  bf16: false                        
+
+  # ── Optimizer ──
+  optimizer:
+    type: "AdamW"
+    lr: 2.0e-4
+    betas: [0.8, 0.99]
+    weight_decay: 0.01
+    eps: 1.0e-8
+
+  # ── LR Scheduler ──
+  scheduler:
+    type: "cosine_warmup"
+    warmup_steps: 2000
+    min_lr: 1.0e-6
+
+  # ── Gradient Clipping ──
+  grad_clip:
+    max_norm: 5.0
+
+  # ── Checkpointing ──
+  checkpoint:
+    save_every_n_epochs: 50
+    save_best: true                  # Save on best validation loss
+    keep_last_n: 5                   # Disk management
+    save_dir: "checkpoints/"
+    resume_from: null                # Path to resume checkpoint
+
+  # ── Logging ──
+  logging:
+    log_every_n_steps: 50
+    wandb:
+      enabled: true
+      project: "callex-tts"
+      entity: null                   # Set to your WandB team
+      tags: ["vits2", "hindi", "production"]
+    tensorboard:
+      enabled: true
+      log_dir: "tb_logs/"
+    log_audio_samples: true
+    audio_sample_every_n_epochs: 10
+
+  # ── Validation ──
+  validation:
+    every_n_epochs: 5
+    num_samples: 8                   # Synthesize N samples for listening
+
+  # ── Data ──
+  data:
+    train_metadata: "data/train/metadata.csv"
+    val_metadata: "data/val/metadata.csv"
+    wav_dir: "data/wavs/"
+    num_workers: 4
+    pin_memory: true
+    drop_last: true
+
+  # ── Augmentation ──
+  augmentation:
+    spec_augment:
+      enabled: true
+      freq_mask_param: 15
+      time_mask_param: 35
+      n_freq_masks: 2
+      n_time_masks: 2
+    pitch_perturbation:
+      enabled: true
+      semitone_range: [-2, 2]
+    time_stretch:
+      enabled: true
+      rate_range: [0.9, 1.1]
+
+# ── Distributed Training (DDP) ──
+distributed:
+  enabled: false                     # Set true for multi-GPU
+  backend: "nccl"
+  world_size: 1
+  find_unused_parameters: false
+
+# ── DeepSpeed (alternative to DDP for large models) ──
+deepspeed:
+  enabled: false
+  config_file: null                  # Path to DeepSpeed JSON config

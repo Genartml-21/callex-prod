@@ -1,0 +1,71 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  CALLEX TTS — Development Stack (Docker Compose)                  ║
+# ║                                                                    ║
+# ║  Services:                                                         ║
+# ║    • callex-tts   — GPU inference server                           ║
+# ║    • prometheus   — Metrics collection                             ║
+# ║    • grafana      — Dashboards & alerting                          ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+version: "3.8"
+
+services:
+  callex-tts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: callex-tts
+    restart: unless-stopped
+    ports:
+      - "8124:8124"
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+      - ./reference.wav:/app/reference.wav:ro
+      - tts-logs:/app/logs
+    environment:
+      - TTS_PORT=8124
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8124/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: callex-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - callex-tts
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: callex-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=callex2026
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  tts-logs:
+  prometheus-data:
+  grafana-data:

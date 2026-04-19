@@ -1,0 +1,11 @@
+# Callex TTS — Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "callex-tts"
+    static_configs:
+      - targets: ["callex-tts:8124"]
+    metrics_path: "/metrics"
+    scrape_interval: 10s

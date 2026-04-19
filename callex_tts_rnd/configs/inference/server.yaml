@@ -1,0 +1,75 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  CALLEX TTS — Production Inference Server Configuration            ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+server:
+  host: "0.0.0.0"
+  port: 8124
+  workers: 1                           # Keep 1 for GPU — model is in VRAM
+  log_level: "info"
+
+  # ── Model Registry ──
+  models:
+    default: "v2.0-hindi"
+    registry:
+      "v2.0-hindi":
+        checkpoint: "checkpoints/callex_vits2_hindi_best.pt"
+        config: "configs/model/hindi_production.yaml"
+        device: "cuda:0"
+        warmup_text: "नमस्ते, मैं कैलेक्स एआई हूँ।"
+
+  # ── Inference ──
+  inference:
+    max_text_length: 1000            # Characters
+    max_concurrent_requests: 16
+    thread_pool_workers: 8
+    default_language: "hi"
+    default_reference_voice: "reference.wav"
+    stream_chunk_size: 4000          # Bytes per streaming chunk
+
+  # ── Post-Processing ──
+  postprocessing:
+    enabled: true                    # Apply audio effects chain
+    resample_to_16k: true            # Telephony output
+
+  # ── SSML Support ──
+  ssml:
+    enabled: true
+    max_breaks_ms: 2000              # Maximum <break> duration
+    allowed_tags:
+      - "prosody"
+      - "break"
+      - "emphasis"
+      - "say-as"
+
+  # ── Rate Limiting ──
+  rate_limit:
+    enabled: true
+    requests_per_minute: 120
+    burst: 20
+
+  # ── Request Tracing ──
+  tracing:
+    enabled: true
+    log_payloads: false              # Set true for debugging (verbose!)
+    inject_request_id: true
+
+  # ── Health & Metrics ──
+  health:
+    gpu_memory_warn_percent: 85
+    gpu_memory_critical_percent: 95
+  metrics:
+    enabled: true
+    path: "/metrics"
+
+  # ── CORS ──
+  cors:
+    enabled: true
+    origins: ["*"]
+    methods: ["GET", "POST"]
+    headers: ["*"]
+
+  # ── Graceful Shutdown ──
+  shutdown:
+    drain_timeout_seconds: 30
+    wait_for_inflight: true
